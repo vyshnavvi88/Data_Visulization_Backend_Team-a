@@ -1,0 +1,2 @@
+vulnerability_id,cve_id,vulnerability_name,severity,cvss_score,affected_asset,patch_available,status
+VUL001,CVE-2024-1045,Privilege Escalation,Critical,9.5,Database-01,Yes,Open

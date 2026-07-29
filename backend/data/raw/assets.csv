@@ -1,0 +1,2 @@
+asset_id,asset_name,asset_type,owner,department,criticality,operating_system
+AST001,HR-PC-01,Workstation,John,HR,Medium,Windows 11
