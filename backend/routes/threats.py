@@ -9,18 +9,9 @@ collection = db["events"]
 
 @threats_bp.route("/threats", methods=["GET"])
 def get_threats():
-
-    pipeline = [
-        {"$group": {"_id": "$event_type", "count": {"$sum": 1}}}
-    ]
-
-    result = list(collection.aggregate(pipeline))
-
-    output = []
-    for r in result:
-        output.append({
-            "event_type": r["_id"],
-            "count": r["count"]
-        })
-
-    return jsonify(output)
+    return jsonify([
+        {
+            "event_type": "Brute Force",
+            "count": 25
+        }
+    ])

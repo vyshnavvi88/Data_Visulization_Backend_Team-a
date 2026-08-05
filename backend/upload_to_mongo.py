@@ -3,7 +3,7 @@ from pymongo import MongoClient
 
 # Connect MongoDB
 client = MongoClient("mongodb://localhost:27017/")
-db = client["cybersecurity_db"]
+db = client["security_project"]
 collection = db["events"]
 
 # Load CSV
