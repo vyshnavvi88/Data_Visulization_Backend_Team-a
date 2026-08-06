@@ -1,0 +1,3 @@
+__pycache__/
+*.pyc
+backend/data/processed/users_fallback.json
