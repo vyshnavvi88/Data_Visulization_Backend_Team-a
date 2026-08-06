@@ -10,7 +10,7 @@ _events_collection = None
 _users_collection = None
 _fallback_mode = None  # None = not determined yet, True = using fallback, False = using MongoDB
 
-FALLBACK_USERS_FILE = os.path.join(os.path.dirname(__file__), "data", "processed", "users_fallback.json")
+FALLBACK_USERS_FILE = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "users_fallback.json"))
 
 def init_default_admin():
     from werkzeug.security import generate_password_hash
