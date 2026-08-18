@@ -1,0 +1,2 @@
+incident_id,event_id,incident_type,assigned_to,status,response_time,resolution
+INC001,EVT00001,Brute Force,SOC,Closed,15 min,Blocked
