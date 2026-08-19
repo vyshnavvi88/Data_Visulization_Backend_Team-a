@@ -4,6 +4,14 @@ import pandas as pd
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
+# Load .env file if present (so MONGO_URI can be set in backend/.env)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()          # loads backend/.env automatically
+except ImportError:
+    pass                   # dotenv not installed — use system env vars
+
+
 # --------------------------------------------------
 # Database / Collection Constants
 # --------------------------------------------------
