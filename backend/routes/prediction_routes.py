@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from flask import Blueprint, jsonify, request
 from db import get_predictions_collection
+from config import MODEL_VERSION
 
 prediction_bp = Blueprint("predictions", __name__)
 
@@ -388,7 +389,7 @@ def predict():
         "confidence_score": _confidence(),
         "severity":         _classify_threat(),
         "threat_type":      event_type or "Unknown",
-        "model_version":    "IF_v2",
+        "model_version":    MODEL_VERSION,
         "note": (
             "Numerical features (failed_login_attempts, cvss_score, severity_score) are NOT "
             "standardised at inference time because the StandardScaler was not persisted. "

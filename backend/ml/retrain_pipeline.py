@@ -17,6 +17,7 @@ Run from the PROJECT ROOT or ANY directory:
 """
 
 import os
+import sys
 import json
 import pandas as pd
 import numpy as np
@@ -26,6 +27,10 @@ from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+
+# Import model version from central config
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import MODEL_VERSION
 
 # ==================================================
 # Paths (always resolved from this file's location)
@@ -323,7 +328,7 @@ results = pd.DataFrame({
     "confidence_score":     confidence_scores,
     "anomaly_score":        anomaly_scores,
     "severity":             threat_levels,
-    "model_version":        "IF_v2",
+    "model_version":        MODEL_VERSION,
     "prediction_timestamp": ts
 })
 
