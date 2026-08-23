@@ -1,5 +1,5 @@
 event_id,timestamp,source_ip,destination_ip,username,event_type,protocol,source_country,destination_country,device_name,os,event_status,severity,failed_login_attempts,malware_detected,vulnerability_id,cvss_score,asset_name,department,severity_score,threat_match,mitre_id,technique_name,tactic,risk_score,is_high_risk
-EVT00001,2025-08-01 00:00:00,206.32.130.31,10.0.7.195,david,Brute Force,SSH,India,India,Device-167,Windows 10,Failed,Critical,3,No,CVE-2023-1234,0.3,Finance-PC-02,Sales,4,False,,,,46.3,True
+EVT00001,2025-08-01 00:00:00,206.32.130.31,10.0.7.195,david,Brute Force,SSH,India,India,Device-167,Windows 10,Blocked,Critical,3,No,CVE-2023-1234,0.3,Finance-PC-02,Sales,4,False,,,,46.3,True
 EVT00002,2025-08-01 00:05:00,179.228.136.185,10.0.3.152,admin,Phishing Email,HTTPS,India,India,Device-8,Windows 11,Success,Low,0,No,,9.4,Finance-PC-02,HR,1,False,,,,19.4,False
 EVT00003,2025-08-01 00:10:00,136.113.224.241,10.0.7.142,john,File Access,HTTPS,India,India,Device-60,Linux,Failed,Low,0,No,CVE-2023-1234,9.5,WebServer,Sales,1,False,,,,19.5,False
 EVT00004,2025-08-01 00:15:00,48.151.61.191,10.0.5.230,alex,Port Scan,SMB,India,India,Device-109,Linux,Failed,Low,0,No,CVE-2024-2201,2.8,Finance-PC-02,Sales,1,False,,,,12.8,False

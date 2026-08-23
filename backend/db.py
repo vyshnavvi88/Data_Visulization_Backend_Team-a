@@ -19,28 +19,29 @@ def init_default_admin():
     # 1. MongoDB check
     if _users_collection is not None:
         try:
-            if _users_collection.count_documents({"username": "admin"}) == 0:
-                admin_user = {
+            _users_collection.update_one(
+                {"username": "admin"},
+                {"$set": {
                     "username": "admin",
                     "email": "admin@threatdetect.local",
                     "password": hashed_pwd
-                }
-                _users_collection.insert_one(admin_user)
-                print("Default admin user created in MongoDB.")
+                }},
+                upsert=True
+            )
+            print("Default admin user ensured in MongoDB.")
         except Exception as e:
             print("Failed to initialize default admin in MongoDB:", e)
             
     # 2. JSON Fallback check
     users = load_fallback_users()
-    if not users or "admin" not in users:
-        admin_user = {
-            "username": "admin",
-            "email": "admin@threatdetect.local",
-            "password": hashed_pwd
-        }
-        users["admin"] = admin_user
-        save_fallback_users(users)
-        print("Default admin user created in fallback JSON.")
+    users["admin"] = {
+        "username": "admin",
+        "email": "admin@threatdetect.local",
+        "password": hashed_pwd
+    }
+    save_fallback_users(users)
+    print("Default admin user ensured in fallback JSON.")
+
 
 def get_db():
     global _client, _db, _events_collection, _users_collection, _fallback_mode
@@ -164,3 +165,48 @@ def save_fallback_users(users):
             json.dump(users, f, indent=4)
     except Exception as e:
         print("Failed to save fallback users:", e)
+
+def load_predictions():
+    import csv
+    predictions_path = os.path.join(os.path.dirname(__file__), "data", "processed", "prediction_results.csv")
+    mapping = {}
+    if os.path.exists(predictions_path):
+        try:
+            with open(predictions_path, mode='r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    evt_id = row.get('event_id')
+                    if evt_id:
+                        mapping[evt_id] = {
+                            'prediction': row.get('prediction', 'Normal'),
+                            'anomaly_score': float(row.get('anomaly_score', 0)) if row.get('anomaly_score') else 0.0,
+                            'threat_level': row.get('threat_level', 'Low'),
+                            'confidence_score': int(row.get('confidence_score', 0)) if row.get('confidence_score') else 0
+                        }
+        except Exception as e:
+            print("Failed to load prediction results:", e)
+    return mapping
+
+def update_event_status(event_id, new_status):
+    events_col, _ = get_db()
+    if events_col is not None:
+        try:
+            result = events_col.update_one({"event_id": event_id}, {"$set": {"event_status": new_status}})
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Failed to update event {event_id} in MongoDB:", e)
+            return False
+            
+    # CSV Fallback logic: update in CSV
+    csv_path = os.path.join(os.path.dirname(__file__), "data", "processed", "final_security_dataset.csv")
+    if os.path.exists(csv_path):
+        try:
+            df = pd.read_csv(csv_path)
+            if event_id in df['event_id'].values:
+                df.loc[df['event_id'] == event_id, 'event_status'] = new_status
+                df.to_csv(csv_path, index=False)
+                return True
+        except Exception as e:
+            print(f"Failed to update event {event_id} in CSV:", e)
+    return False
+

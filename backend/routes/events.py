@@ -1,12 +1,52 @@
 from flask import Blueprint, jsonify, request
-from db import get_events_data, insert_event_data
+from db import get_events_data, insert_event_data, load_predictions, update_event_status
 
 events_bp = Blueprint("events", __name__)
 
-def map_event_to_frontend(event):
-    evt_id_str = event.get("event_id", "")
+def map_event_to_frontend(event, predictions_map=None):
+    # Determine predictions if map is provided
+    evt_id = event.get("event_id", "")
+    pred_info = predictions_map.get(evt_id, {}) if predictions_map else {}
+    
+    # Raw dataset fields (making sure they are present and have correct types)
+    failed_login = event.get("failed_login_attempts", 0)
     try:
-        numeric_id = int(''.join(filter(str.isdigit, str(evt_id_str))))
+        failed_login = int(float(failed_login)) if failed_login not in ["", None, "None"] else 0
+    except (ValueError, TypeError):
+        failed_login = 0
+        
+    malware_detected_raw = str(event.get("malware_detected", "")).lower()
+    malware_detected_bool = malware_detected_raw in ["yes", "true", "1"]
+    
+    cvss = event.get("cvss_score", 0.0)
+    try:
+        cvss = float(cvss) if cvss not in ["", None, "None"] else 0.0
+    except (ValueError, TypeError):
+        cvss = 0.0
+        
+    risk = event.get("risk_score", 0.0)
+    try:
+        risk = float(risk) if risk not in ["", None, "None"] else 0.0
+    except (ValueError, TypeError):
+        risk = 0.0
+        
+    is_high_risk = event.get("is_high_risk")
+    if isinstance(is_high_risk, str):
+        is_high_risk_bool = is_high_risk.lower() == "true"
+    else:
+        is_high_risk_bool = bool(is_high_risk)
+        
+    # Uppercase severity (expected by frontend charts & filters)
+    severity_raw = str(event.get("severity", "")).upper()
+    if severity_raw in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "WARNING"]:
+        severity_title = severity_raw
+    else:
+        severity_title = "LOW"
+        
+        
+    # Legacy mapped keys
+    try:
+        numeric_id = int(''.join(filter(str.isdigit, str(evt_id))))
     except ValueError:
         numeric_id = 0
 
@@ -18,40 +58,44 @@ def map_event_to_frontend(event):
         time_str = str(timestamp_str).split("T")[1][:8]
     else:
         time_str = str(timestamp_str)
-    
-    raw_severity = str(event.get("severity", "")).lower()
-    if raw_severity == "critical":
-        severity = "CRITICAL"
-    elif raw_severity in ["high", "medium"]:
-        severity = "WARNING"
-    else:
-        severity = "LOW"
         
-    raw_status = str(event.get("event_status", "")).lower()
-    if raw_status in ["blocked", "failed"]:
+    status_raw = str(event.get("event_status", "")).lower()
+    if status_raw in ["blocked", "failed"]:
         status = "RESOLVED"
     else:
         status = "UNRESOLVED"
         
-    is_high_risk = event.get("is_high_risk")
-    if isinstance(is_high_risk, str):
-        is_high_risk_bool = is_high_risk.lower() == "true"
-    else:
-        is_high_risk_bool = bool(is_high_risk)
-        
+    # Construct complete dictionary with both raw keys, legacy mapped keys, and ML prediction keys
     return {
+        # Raw dataset fields
+        "event_id": evt_id,
+        "timestamp": timestamp_str,
+        "source_ip": event.get("source_ip", ""),
+        "destination_ip": event.get("destination_ip", ""),
+        "username": event.get("username", ""),
+        "event_type": event.get("event_type", ""),
+        "severity": severity_title,
+        "failed_login_attempts": failed_login,
+        "malware_detected": malware_detected_bool,
+        "vulnerability_id": event.get("vulnerability_id", ""),
+        "cvss_score": cvss,
+        "asset_name": event.get("asset_name", ""),
+        "risk_score": risk,
+        "is_high_risk": is_high_risk_bool,
+        
+        # ML prediction results (enriched)
+        "prediction": pred_info.get("prediction", "Normal"),
+        "anomaly_score": pred_info.get("anomaly_score", 0.0),
+        "threat_level": pred_info.get("threat_level", "Low"),
+        "confidence_score": pred_info.get("confidence_score", 0),
+        
+        # Legacy frontend fields (backward compatibility)
         "id": numeric_id,
         "time": time_str,
-        "timestamp": timestamp_str,
         "name": event.get("event_type", "Unknown Event"),
-        "event_type": event.get("event_type", "Unknown Event"),
         "source": event.get("username", "System"),
-        "source_ip": event.get("source_ip", ""),
         "target": event.get("asset_name", ""),
-        "destination_ip": event.get("destination_ip", ""),
-        "severity": severity,
-        "status": status,
-        "is_high_risk": is_high_risk_bool
+        "status": status
     }
 
 @events_bp.route("/events", methods=["GET", "POST"])
@@ -86,5 +130,15 @@ def manage_events():
         return jsonify({"error": "No data provided"}), 400
 
     raw_events = get_events_data()
-    mapped_events = [map_event_to_frontend(evt) for evt in raw_events]
+    preds = load_predictions()
+    mapped_events = [map_event_to_frontend(evt, preds) for evt in raw_events]
     return jsonify(mapped_events)
+
+@events_bp.route("/api/events/<event_id>/resolve", methods=["POST"])
+@events_bp.route("/events/<event_id>/resolve", methods=["POST"])
+def resolve_event(event_id):
+    success = update_event_status(event_id, "Blocked")
+    if success:
+        return jsonify({"message": f"Event {event_id} marked as resolved/blocked."}), 200
+    else:
+        return jsonify({"error": f"Failed to update event {event_id} or event not found."}), 404
