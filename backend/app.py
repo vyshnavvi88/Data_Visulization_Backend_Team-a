@@ -7,6 +7,8 @@ from routes.stats import stats_bp
 from routes.threats import threats_bp
 from routes.auth import auth_bp
 from routes.prediction_routes import prediction_bp
+from routes.risk_routes import risk_bp
+from routes.incident_routes import incident_bp
 from db import get_connection_info
 
 # Path to the frontend's dist folder (Naveen's integration)
@@ -49,10 +51,28 @@ app.register_blueprint(auth_bp)                          # POST /api/login  POST
 # --------------------------------------------------
 
 app.register_blueprint(prediction_bp, url_prefix="/api")
-# GET  /predictions
-# GET  /predictions/<event_id>
-# GET  /anomalies
-# GET  /model-performance
+# GET  /api/predictions
+# GET  /api/predictions/<event_id>
+# GET  /api/anomalies
+# GET  /api/model-performance
+# GET  /api/threat-summary
+# POST /api/predict
+
+
+# --------------------------------------------------
+# Milestone 3 APIs  (Risk, Incidents, Attack Chains)
+# --------------------------------------------------
+
+app.register_blueprint(risk_bp,      url_prefix="/api/v1")
+# GET  /api/v1/risk/summary
+# GET  /api/v1/risk/high
+# POST /api/v1/risk/calculate
+
+app.register_blueprint(incident_bp,  url_prefix="/api/v1")
+# GET  /api/v1/incidents
+# GET  /api/v1/incidents/<incident_id>
+# GET  /api/v1/attack-chains
+# GET  /api/v1/recommendations/<incident_id>
 # GET  /threat-summary
 # POST /predict
 

@@ -16,10 +16,11 @@ except ImportError:
 # Database / Collection Constants
 # --------------------------------------------------
 
-DATABASE_NAME       = "Security_db"
-EVENTS_COLLECTION   = "processed_events"
-PREDICT_COLLECTION  = "prediction_results"
-USERS_COLLECTION    = "users"
+DATABASE_NAME         = "Security_db"
+EVENTS_COLLECTION     = "processed_events"
+PREDICT_COLLECTION    = "prediction_results"
+USERS_COLLECTION      = "users"
+INCIDENTS_COLLECTION  = "incidents"   # M3 — incident records
 
 # --------------------------------------------------
 # Module-level singletons
@@ -30,6 +31,7 @@ _db                     = None
 _events_collection      = None
 _users_collection       = None
 _predictions_collection = None
+_incidents_collection   = None          # M3
 _fallback_mode          = None  # None = not determined, False = MongoDB OK, True = fallback
 _connection_source      = "Not connected"  # "MongoDB Atlas" | "Local MongoDB Compass" | "CSV Fallback"
 
@@ -329,3 +331,19 @@ def save_fallback_users(users):
             json.dump(users, f, indent=4)
     except Exception as e:
         print("Failed to save fallback users:", e)
+
+
+# --------------------------------------------------
+# M3 — Incidents collection getter
+# --------------------------------------------------
+
+def get_incidents_collection():
+    """Returns the MongoDB incidents collection, or None if not connected."""
+    global _incidents_collection, _db, _fallback_mode
+    if _fallback_mode is None:
+        get_db()   # trigger connection
+    if _fallback_mode is False and _db is not None:
+        if _incidents_collection is None:
+            _incidents_collection = _db[INCIDENTS_COLLECTION]
+        return _incidents_collection
+    return None
