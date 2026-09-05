@@ -1,0 +1,2 @@
+event_type,mitre_id,technique_name,tactic
+Failed Login,T1110,Brute Force,Credential Access

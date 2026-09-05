@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+backend/data/processed/users_fallback.json
+users_fallback.json
+.env
+backend/.env

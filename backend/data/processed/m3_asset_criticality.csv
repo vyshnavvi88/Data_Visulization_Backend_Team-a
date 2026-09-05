@@ -1,0 +1,6 @@
+asset_id,asset_name,asset_type,criticality,criticality_score
+AST001,Finance-PC-02,Workstation,High,0.75
+AST002,WebServer,Server,High,0.75
+AST003,Firewall,Network Security Device,Critical,1.0
+AST004,Database-01,Database,Critical,1.0
+AST005,HR-PC-01,Workstation,Medium,0.5
