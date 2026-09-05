@@ -87,11 +87,11 @@ def api_health():
     return {
         "Project":    "AI Threat Detection Dashboard",
         "Backend":    "Running",
-        "Version":    "1.0",
+        "Version":    "3.0",
         "Database":   conn["database"],
         "Connection": conn["source"],
         "Connected":  conn["connected"],
-        "Endpoints": [
+        "Milestone_1_2_Endpoints": [
             "GET  /api/events",
             "GET  /api/events?severity=Critical",
             "GET  /api/events?event_type=Brute Force",
@@ -106,7 +106,22 @@ def api_health():
             "POST /api/predict",
             "POST /api/login",
             "POST /api/signup"
-        ]
+        ],
+        "Milestone_3_Endpoints": [
+            "GET  /api/v1/risk/summary",
+            "GET  /api/v1/risk/high",
+            "GET  /api/v1/risk/high?risk_class=Critical",
+            "GET  /api/v1/risk/high?limit=50&offset=0",
+            "POST /api/v1/risk/calculate",
+            "GET  /api/v1/incidents",
+            "GET  /api/v1/incidents?priority=Critical",
+            "GET  /api/v1/incidents?status=Open&limit=50&offset=0",
+            "GET  /api/v1/incidents/<incident_id>",
+            "GET  /api/v1/attack-chains",
+            "GET  /api/v1/attack-chains?min_events=2&limit=50",
+            "GET  /api/v1/recommendations/<incident_id>"
+        ],
+        "Docs": "See backend/README.md for full request/response details"
     }
 
 

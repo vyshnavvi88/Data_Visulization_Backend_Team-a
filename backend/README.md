@@ -80,8 +80,7 @@ backend/
 │   └── ...
 │
 └── tests/
-    ├── test_apis.py                # M2 Task 9 — 69 API tests
-    └── test_unit_plan.py           # M3 — 41 unit tests (mentor's test plan)
+    └── test_unit_plan.py           # 41 unit tests — all milestones (mentor's test plan)
 ```
 
 ---
@@ -131,25 +130,23 @@ Server runs at: `http://127.0.0.1:5000`
 **Requires Flask to be running in a separate terminal first.**
 
 ```bash
-# Run mentor's 40-test unit plan (41 tests)
+# Run all 41 tests (M1 + M2 + M3 + M4)
 python -m pytest tests/test_unit_plan.py -v
 
-# Run M2 API tests
-python -m pytest tests/test_apis.py -v
-
-# Run all tests together
-python -m pytest tests/ -v
+# Quick summary output
+python -m pytest tests/test_unit_plan.py -q
 
 # Run only a specific milestone
 python -m pytest tests/test_unit_plan.py::TestMilestone1DataPipeline -v
 python -m pytest tests/test_unit_plan.py::TestMilestone2MLPrediction -v
 python -m pytest tests/test_unit_plan.py::TestMilestone3RiskAndIncidents -v
 python -m pytest tests/test_unit_plan.py::TestMilestone4DashboardAPIs -v
+
+# Run a single specific test
+python -m pytest tests/test_unit_plan.py::TestMilestone1DataPipeline::test_tc01_dataset_loading -v
 ```
 
-**Results:**
-- `test_unit_plan.py` → **41/41 PASSED ✅**
-- `test_apis.py`      → **69/69 PASSED ✅**
+**Result: 41/41 PASSED ✅**
 
 ---
 
@@ -787,4 +784,4 @@ Correlated Events   : 1640
 - **Branch:** `main` (merged from Prasanth branch)
 - **Model version:** `IF_v2`
 - **Database:** `Security_db` (Atlas + Local Compass fallback)
-- **Tests:** 41/41 (unit plan) + 69/69 (API tests) = **110 tests passing**
+- **Tests:** 41/41 tests passing
