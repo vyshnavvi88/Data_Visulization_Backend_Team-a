@@ -2,3 +2,7 @@ flask
 pymongo
 flask-cors
 pandas
+joblib
+scikit-learn
+numpy
+werkzeug

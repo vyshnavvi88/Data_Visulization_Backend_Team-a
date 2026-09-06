@@ -1,29 +1,54 @@
+"""
+anomaly_detection.py
+--------------------
+Trains an Isolation Forest model on ml_features.csv and generates
+prediction results stored in prediction_results.csv.
+
+Run from the PROJECT ROOT:
+    python backend/ml/anomaly_detection.py
+"""
+
+import os
 import pandas as pd
 import joblib
 from sklearn.ensemble import IsolationForest
+from datetime import datetime
+
+# --------------------------------------------------
+# Base paths (resolved relative to this file's location)
+# --------------------------------------------------
+
+_ML_DIR       = os.path.dirname(os.path.abspath(__file__))        # backend/ml/
+_BACKEND_DIR  = os.path.dirname(_ML_DIR)                          # backend/
+_DATA_DIR     = os.path.join(_BACKEND_DIR, "data", "processed")   # backend/data/processed/
+_MODELS_DIR   = os.path.join(_BACKEND_DIR, "models")              # backend/models/
+
+ML_FEATURES_CSV      = os.path.join(_DATA_DIR, "ml_features.csv")
+# Use Security_db.processed_events.csv as the canonical source for event_id / metadata
+ORIGINAL_DATASET_CSV = os.path.join(_DATA_DIR, "Security_db.processed_events.csv")
+PREDICTIONS_CSV      = os.path.join(_DATA_DIR, "prediction_results.csv")
+MODEL_PKL            = os.path.join(_MODELS_DIR, "isolation_forest.pkl")
 
 
 # ---------------------------------------
 # 1. Load ML-ready features
 # ---------------------------------------
 
-df = pd.read_csv(
-    "backend/data/processed/ml_features.csv"
-)
-
-print("Dataset shape:", df.shape)
+df = pd.read_csv(ML_FEATURES_CSV)
+print("ML feature dataset shape:", df.shape)
 
 
 # ---------------------------------------
-# 2. Load original dataset
-#    Used to get the real event_id
+# 2. Load original dataset (for event_id and metadata)
 # ---------------------------------------
 
-original_df = pd.read_csv(
-    "backend/data/processed/final_security_dataset.csv"
-)
-
+original_df = pd.read_csv(ORIGINAL_DATASET_CSV)
 print("Original dataset shape:", original_df.shape)
+
+# Align lengths (safety check)
+min_len = min(len(df), len(original_df))
+df          = df.iloc[:min_len]
+original_df = original_df.iloc[:min_len]
 
 
 # ---------------------------------------
@@ -42,7 +67,6 @@ model = IsolationForest(
 # ---------------------------------------
 
 model.fit(df)
-
 print("Isolation Forest model trained successfully.")
 
 
@@ -50,73 +74,63 @@ print("Isolation Forest model trained successfully.")
 # 5. Save trained model
 # ---------------------------------------
 
-joblib.dump(
-    model,
-    "backend/models/isolation_forest.pkl"
-)
-
-print("Model saved successfully.")
+os.makedirs(_MODELS_DIR, exist_ok=True)
+joblib.dump(model, MODEL_PKL)
+print(f"Model saved to: {MODEL_PKL}")
 
 
 # ---------------------------------------
 # 6. Generate predictions
 # ---------------------------------------
 
-predictions = model.predict(df)
-
-
-# ---------------------------------------
-# 7. Generate anomaly scores
-# ---------------------------------------
-
+predictions   = model.predict(df)          # 1 = Normal, -1 = Suspicious
 anomaly_scores = model.decision_function(df)
 
 
 # ---------------------------------------
-# 8. Convert predictions to readable labels
+# 7. Convert predictions to readable labels
 # ---------------------------------------
 
 prediction_labels = [
-    "Suspicious" if prediction == -1 else "Normal"
-    for prediction in predictions
+    "Suspicious" if p == -1 else "Normal"
+    for p in predictions
 ]
+
+
 # ---------------------------------------
 # Threat Classification
 # ---------------------------------------
 
 def classify_threat(row, prediction):
-    # Normal ML prediction
+    # Normal ML prediction → Low threat
     if prediction == 1:
         return "Low"
 
     # Critical indicators
     if (
-        row["malware_detected"] == "Yes"
-        and row["cvss_score"] >= 9
+        row.get("malware_detected") == "Yes"
+        and float(row.get("cvss_score", 0)) >= 9
     ):
         return "Critical"
 
     # High threat indicators
     if (
-        row["failed_login_attempts"] > 10
-        or row["cvss_score"] >= 7
-        or row["malware_detected"] == "Yes"
-        or row["severity"] == "High"
-        or row["severity"] == "Critical"
+        float(row.get("failed_login_attempts", 0)) > 10
+        or float(row.get("cvss_score", 0)) >= 7
+        or row.get("malware_detected") == "Yes"
+        or row.get("severity") in ("High", "Critical")
     ):
         return "High"
 
-    # Medium threat
     return "Medium"
 
 
 threat_levels = [
-    classify_threat(row, prediction)
-    for (_, row), prediction in zip(
-        original_df.iterrows(),
-        predictions
-    )
+    classify_threat(row, pred)
+    for (_, row), pred in zip(original_df.iterrows(), predictions)
 ]
+
+
 # ---------------------------------------
 # Confidence Score
 # ---------------------------------------
@@ -124,79 +138,72 @@ threat_levels = [
 def calculate_confidence(row, prediction):
     score = 0
 
-    # Anomaly detected
     if prediction == -1:
         score += 30
 
-    # Failed login attempts
-    if row["failed_login_attempts"] > 10:
+    failed = float(row.get("failed_login_attempts", 0))
+    if failed > 10:
         score += 20
-    elif row["failed_login_attempts"] > 5:
+    elif failed > 5:
         score += 10
 
-    # CVSS score
-    if row["cvss_score"] >= 9:
+    cvss = float(row.get("cvss_score", 0))
+    if cvss >= 9:
         score += 25
-    elif row["cvss_score"] >= 7:
+    elif cvss >= 7:
         score += 15
-    elif row["cvss_score"] >= 4:
+    elif cvss >= 4:
         score += 5
 
-    # Malware detected
-    if row["malware_detected"] == "Yes":
+    if row.get("malware_detected") == "Yes":
         score += 25
 
     return min(score, 100)
 
 
 confidence_scores = [
-    calculate_confidence(row, prediction)
-    for (_, row), prediction in zip(
-        original_df.iterrows(),
-        predictions
-    )
+    calculate_confidence(row, pred)
+    for (_, row), pred in zip(original_df.iterrows(), predictions)
 ]
 
 
 # ---------------------------------------
-# 9. Create prediction results
+# 9. Create prediction results DataFrame
 # ---------------------------------------
 
 results = pd.DataFrame({
-    "event_id": original_df["event_id"],
-    "prediction": prediction_labels,
-    "anomaly_score": anomaly_scores,
-    "threat_level": threat_levels,
-    "confidence_score": confidence_scores
+    "event_id":            original_df["event_id"],
+    "prediction":          prediction_labels,
+    "threat_type":         original_df["event_type"],
+    "confidence_score":    confidence_scores,
+    "anomaly_score":       anomaly_scores,
+    "severity":            threat_levels,
+    "model_version":       "IF_v1",
+    "prediction_timestamp": datetime.now().isoformat()
 })
 
 
 # ---------------------------------------
-# 10. Save prediction results
+# 10. Save prediction results CSV
 # ---------------------------------------
 
-results.to_csv(
-    "backend/data/processed/prediction_results.csv",
-    index=False
-)
-
-print("\nPrediction results saved successfully.")
+results.to_csv(PREDICTIONS_CSV, index=False)
+print(f"\nPrediction results saved to: {PREDICTIONS_CSV}")
 
 
 # ---------------------------------------
-# 11. Display first 10 predictions
+# 11. Display summary
 # ---------------------------------------
 
-print("\nPredictions:")
+print("\nPredictions (first 10):")
 print(predictions[:10])
 
-
-print("\nAnomaly scores:")
+print("\nAnomaly scores (first 10):")
 print(anomaly_scores[:10])
 
-
-# ---------------------------------------
-# 12. Display prediction summary
-# ---------------------------------------
-
-
+print("\nPrediction summary:")
+print(f"  Total    : {len(results)}")
+print(f"  Normal   : {sum(1 for p in prediction_labels if p == 'Normal')}")
+print(f"  Suspicious: {sum(1 for p in prediction_labels if p == 'Suspicious')}")
+print(f"\nModel file : {MODEL_PKL}")
+print(f"Results CSV: {PREDICTIONS_CSV}")
